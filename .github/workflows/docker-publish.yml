@@ -61,70 +61,70 @@ jobs:
             ${{ env.IMAGE_NAME }}:latest
             ${{ env.IMAGE_NAME }}:${{ github.sha }}
 
-  deploy:
-    needs: build-and-push
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    steps:
-      - name: Deploy to server
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          password: ${{ secrets.DEPLOY_PASSWORD }}
-          # 回显服务器端命令输出，便于排查部署错误
-          debug: true
-          script: |
-            set -e
-
-            IMAGE="ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]'):latest"
-            SITE_DIR="/opt/1panel/apps/openresty/openresty/www/sites/newshub.shenzjd.com/index"
-            ENV_FILE="$SITE_DIR/.env"
-
-            # .env 为容器环境变量的来源，由 docker run --env-file 注入，
-            # 服务器上直接编辑该文件即可改配置，重启生效。
-            # 首次部署时创建空文件(空 env-file 合法)，确保文件可读。
-            if [ ! -f "$ENV_FILE" ]; then sudo touch "$ENV_FILE"; fi
-            sudo chown 1001:1001 "$ENV_FILE" || true
-
-            sudo docker pull "$IMAGE"
-            sudo docker stop newshub newshub.shenzjd.com || true
-            sudo docker rm newshub newshub.shenzjd.com || true
-
-            # 数据目录(缓存等)挂载到宿主机，容器重建不丢。
-            # bind mount 会覆盖镜像层属主，需显式 chown 为容器 UID(1001)。
-            sudo mkdir -p "$SITE_DIR/data"
-            sudo chown -R 1001:1001 "$SITE_DIR" || true
-
-            # 启动容器；失败时输出容器日志，让 CI 显示真实错误
-            # 资源限制参考 shenzjd.com 模板：内存上限 512m（防止低配机器 OOM），
-            # NODE_OPTIONS 限制 V8 heap（应用实际 heap 仅 ~30MB，256m 绰绰有余）
-            if ! sudo docker run -d \
-              --name newshub \
-              --restart unless-stopped \
-              --memory 512m \
-              --memory-swap 512m \
-              -p 6703:3000 \
-              -e NODE_OPTIONS=--max-old-space-size=256 \
-              -v "$SITE_DIR/data":/app/data \
-              --env-file "$ENV_FILE" \
-              "$IMAGE"; then
-              echo "❌ docker run 失败，最近容器日志:"
-              sudo docker logs --tail 50 newshub 2>&1 || true
-              exit 1
-            fi
-
-            # 健康检查：确认服务真正启动成功
-            echo "等待服务启动..."
-            for i in $(seq 1 20); do
-              if curl -sf http://localhost:6703/api/v1/health >/dev/null 2>&1; then
-                echo "✅ 服务健康检查通过"
-                sudo docker image prune -f || true
-                exit 0
-              fi
-              sleep 2
-            done
-
-            echo "❌ 服务未在 40 秒内就绪，容器日志:"
-            sudo docker logs --tail 50 newshub 2>&1 || true
-            exit 1
+  # deploy:
+  #   needs: build-and-push
+  #   runs-on: ubuntu-latest
+  #   if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+  #   steps:
+  #     - name: Deploy to server
+  #       uses: appleboy/ssh-action@v1
+  #       with:
+  #         host: ${{ secrets.DEPLOY_HOST }}
+  #         username: ${{ secrets.DEPLOY_USER }}
+  #         password: ${{ secrets.DEPLOY_PASSWORD }}
+  #         # 回显服务器端命令输出，便于排查部署错误
+  #         debug: true
+  #         script: |
+  #           set -e
+  #
+  #           IMAGE="ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]'):latest"
+  #           SITE_DIR="/opt/1panel/apps/openresty/openresty/www/sites/newshub.shenzjd.com/index"
+  #           ENV_FILE="$SITE_DIR/.env"
+  #
+  #           # .env 为容器环境变量的来源，由 docker run --env-file 注入，
+  #           # 服务器上直接编辑该文件即可改配置，重启生效。
+  #           # 首次部署时创建空文件(空 env-file 合法)，确保文件可读。
+  #           if [ ! -f "$ENV_FILE" ]; then sudo touch "$ENV_FILE"; fi
+  #           sudo chown 1001:1001 "$ENV_FILE" || true
+  #
+  #           sudo docker pull "$IMAGE"
+  #           sudo docker stop newshub newshub.shenzjd.com || true
+  #           sudo docker rm newshub newshub.shenzjd.com || true
+  #
+  #           # 数据目录(缓存等)挂载到宿主机，容器重建不丢。
+  #           # bind mount 会覆盖镜像层属主，需显式 chown 为容器 UID(1001)。
+  #           sudo mkdir -p "$SITE_DIR/data"
+  #           sudo chown -R 1001:1001 "$SITE_DIR" || true
+  #
+  #           # 启动容器；失败时输出容器日志，让 CI 显示真实错误
+  #           # 资源限制参考 shenzjd.com 模板：内存上限 512m（防止低配机器 OOM），
+  #           # NODE_OPTIONS 限制 V8 heap（应用实际 heap 仅 ~30MB，256m 绰绰有余）
+  #           if ! sudo docker run -d \
+  #             --name newshub \
+  #             --restart unless-stopped \
+  #             --memory 512m \
+  #             --memory-swap 512m \
+  #             -p 6703:3000 \
+  #             -e NODE_OPTIONS=--max-old-space-size=256 \
+  #             -v "$SITE_DIR/data":/app/data \
+  #             --env-file "$ENV_FILE" \
+  #             "$IMAGE"; then
+  #             echo "❌ docker run 失败，最近容器日志:"
+  #             sudo docker logs --tail 50 newshub 2>&1 || true
+  #             exit 1
+  #           fi
+  #
+  #           # 健康检查：确认服务真正启动成功
+  #           echo "等待服务启动..."
+  #           for i in $(seq 1 20); do
+  #             if curl -sf http://localhost:6703/api/v1/health >/dev/null 2>&1; then
+  #               echo "✅ 服务健康检查通过"
+  #               sudo docker image prune -f || true
+  #               exit 0
+  #             fi
+  #             sleep 2
+  #           done
+  #
+  #           echo "❌ 服务未在 40 秒内就绪，容器日志:"
+  #           sudo docker logs --tail 50 newshub 2>&1 || true
+  #           exit 1
