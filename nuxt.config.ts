@@ -129,9 +129,6 @@ export default defineNuxtConfig({
             ) {
               return 'utils';
             }
-            if (id.includes('node_modules/html2canvas')) {
-              return 'image';
-            }
           },
         },
       },
