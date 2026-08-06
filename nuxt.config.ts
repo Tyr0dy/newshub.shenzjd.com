@@ -58,7 +58,11 @@ export default defineNuxtConfig({
     },
 
     // 预设（自动检测，Vercel 环境使用 vercel 预设）
-    preset: process.env.VERCEL ? "vercel" : (process.env.NITRO_PRESET || "node"),
+    // 注意：必须用 node-server 而非 node（node 是 node-listener 的别名，
+    // 产物只导出 handler 不自动 listen，需要自定义启动脚本）。
+    // node-server 产物自带 HTTP server + 静态资源服务（gzip/brotli 协商），
+    // 直接 `node .output/server/index.mjs` 启动。
+    preset: process.env.VERCEL ? "vercel" : (process.env.NITRO_PRESET || "node-server"),
 
     // 压缩配置
     compressPublicAssets: true,

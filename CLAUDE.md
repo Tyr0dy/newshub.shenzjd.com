@@ -246,19 +246,17 @@ ENV HOST=0.0.0.0
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 COPY --from=builder --chown=nextjs:nodejs /app/.output ./.output
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nextjs:nodejs /app/package.json ./
-COPY --from=builder --chown=nextjs:nodejs /app/start.mjs ./
 # 数据目录（宿主机 bind mount 到 /app/data）
 RUN mkdir -p /app/data && chown nextjs:nodejs /app/data
 USER nextjs
 EXPOSE 3000
-CMD ["node", "start.mjs"]
+CMD ["node", ".output/server/index.mjs"]
 ```
 
 **关键点：**
-- 使用 `start.mjs` 作为启动脚本，支持静态文件服务
-- 多阶段构建：builder 构建、runner 只保留运行所需文件，镜像更小
+- 使用 Nitro `node-server` preset（不是 `node`/`node-listener`），产物 `.output/server/index.mjs` 自带 HTTP server + 静态资源服务（gzip/brotli 协商），直接 `node .output/server/index.mjs` 启动
+- 多阶段构建：builder 构建、runner 只保留运行所需文件；**不复制根目录 node_modules**（Nitro 产物已自包含运行时依赖，复制 334MB 构建期工具只会撑大镜像）
 - 非 root 用户运行（UID 1001），数据目录 `/app/data` 由宿主机挂载
 - 支持 GitHub Actions 自动构建（`npm run type-check` + `npm run test` 门禁）
 
