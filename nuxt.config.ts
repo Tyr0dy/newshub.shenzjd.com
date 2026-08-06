@@ -1,6 +1,7 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 import { defineNuxtConfig } from "nuxt/config";
 import { resolve } from "node:path";
+import tailwindcss from "@tailwindcss/vite";
 
 export default defineNuxtConfig({
   // 兼容性日期
@@ -10,9 +11,10 @@ export default defineNuxtConfig({
   devtools: { enabled: process.env.NODE_ENV !== "production" },
 
   // 模块
-  modules: [
-    "@nuxtjs/tailwindcss",
-  ],
+  modules: [],
+
+  // 全局样式（Tailwind v4 + DaisyUI 配置见 assets/css/main.css）
+  css: ["~/assets/css/main.css"],
 
   // 页面路由
   pages: true,
@@ -84,35 +86,6 @@ export default defineNuxtConfig({
     "@composables": resolve(__dirname, "./composables"),
   },
 
-  // PostCSS 配置
-  postcss: {
-    plugins: {
-      tailwindcss: {},
-      autoprefixer: {},
-      ...(process.env.NODE_ENV === "production" ? {
-        cssnano: {
-          preset: ["default", {
-            discardComments: { removeAll: true },
-          }],
-        },
-      } : {}),
-    },
-  },
-
-  // Tailwind CSS 配置
-  tailwindcss: {
-    config: {
-      theme: {
-        extend: {
-          colors: {
-            primary: "#07C160",
-            secondary: "#1DA1F2",
-          },
-        },
-      },
-    },
-  },
-
   // 开发服务器配置
   devServer: {
     host: "0.0.0.0",
@@ -133,6 +106,8 @@ export default defineNuxtConfig({
 
   // 优化打包
   vite: {
+    plugins: [tailwindcss()],
+
     // 构建选项
     build: {
       // 代码分割

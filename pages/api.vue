@@ -447,6 +447,8 @@ useHead({
 </script>
 
 <style scoped>
+@reference "tailwindcss";
+
 .mock-code {
   @apply p-3 rounded-lg overflow-x-auto;
 }

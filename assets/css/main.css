@@ -1,0 +1,17 @@
+/* Tailwind CSS v4 - CSS-first 配置 */
+@import "tailwindcss";
+
+/* DaisyUI 5 插件（Tailwind 4 使用 @plugin 指令）
+ * 主题：light 默认亮色、dark 跟随系统偏好、cupcake 可选
+ */
+@plugin "daisyui" {
+  themes: light --default, dark --prefersdark, cupcake;
+}
+
+/* 自定义主题色（原 nuxt.config tailwindcss.config 迁移）
+ * 提供 bg-primary / text-secondary 等工具类
+ */
+@theme {
+  --color-primary: #07C160;
+  --color-secondary: #1DA1F2;
+}
