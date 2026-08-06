@@ -2,8 +2,8 @@ version: "3.8"
 
 services:
   newshub:
-    # 远程镜像（服务器部署推荐，GitHub Actions 自动构建并推送）
-    image: wu529778790/newshub.shenzjd.com:latest
+    # 远程镜像（服务器部署推荐，GitHub Actions 自动构建并推送 GHCR）
+    image: ghcr.io/wu529778790/newshub.shenzjd.com:latest
     # 本地开发构建镜像：注释掉上面的 image，改用下面这行
     # build: .
     container_name: newshub

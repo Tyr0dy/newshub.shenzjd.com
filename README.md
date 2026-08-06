@@ -48,7 +48,7 @@ pnpm clean           # 清理构建产物
 docker run -d -p 3000:3000 \
   --name newshub \
   --restart unless-stopped \
-  wu529778790/newshub.shenzjd.com:latest
+  ghcr.io/wu529778790/newshub.shenzjd.com:latest
 ```
 
 ### 方式二：Docker Compose
@@ -61,34 +61,30 @@ docker compose up -d
 docker compose logs -f
 ```
 
-镜像同时发布到两个仓库：
+镜像发布到 GitHub Container Registry：
 
 | 仓库 | 地址 |
 |------|------|
-| Docker Hub | `docker.io/wu529778790/newshub.shenzjd.com` |
 | GitHub Container Registry | `ghcr.io/wu529778790/newshub.shenzjd.com` |
 
 ### 方式三：GitHub Actions 自动部署（推荐）
 
-推送代码到 `main` 分支后，CI/CD 流水线会自动完成 **构建镜像 → 推送镜像 → SSH 登录服务器 → 拉取最新镜像并重启容器** 的完整流程：
+推送代码到 `main` 分支后，CI/CD 流水线会自动完成 **构建镜像 → 推送 GHCR → SSH 登录服务器 → 拉取最新镜像并重启容器** 的完整流程：
 
 ```
-push → 构建并推送 Docker 镜像 (build-and-push)
-     → 部署到服务器 (deploy)：docker compose pull && docker compose up -d
+push → 构建并推送 Docker 镜像 (build-and-push-image)
+     → 部署到服务器 (deploy)：docker pull && docker run 直部署
 ```
 
 使用前需要在 GitHub 仓库 **Settings → Secrets and variables → Actions** 中配置以下密钥：
 
 | Secret | 说明 | 示例 |
 |--------|------|------|
-| `DOCKER_USERNAME` | Docker Hub 用户名（构建推送用） | `your-dockerhub-name` |
-| `DOCKER_PASSWORD` | Docker Hub 访问令牌 | `xxxxx` |
 | `DEPLOY_HOST` | 服务器 IP 或域名 | `1.2.3.4` |
-| `DEPLOY_USERNAME` | 服务器 SSH 登录用户名 | `root` |
-| `DEPLOY_KEY` | 服务器 SSH 私钥（登录用） | `-----BEGIN OPENSSH PRIVATE KEY-----...` |
-| `DEPLOY_PORT` | 服务器 SSH 端口（可选，默认 22） | `22` |
+| `DEPLOY_USER` | 服务器 SSH 登录用户名 | `root` |
+| `DEPLOY_PASSWORD` | 服务器 SSH 登录密码 | `xxxxx` |
 
-服务器需预装 **Docker + Docker Compose**，并开放目标端口。首次部署时 CI 会自动在服务器 `~/apps/newshub/` 下写入 `docker-compose.yml` 并启动服务。
+服务器需预装 **Docker**，部署账号需有免密 `sudo docker` 权限，并开放目标端口。部署脚本会从 1Panel 站点目录 `/opt/1panel/apps/openresty/openresty/www/sites/newshub.shenzjd.com/index/.env` 加载环境变量（不存在则跳过），并将缓存数据持久化到服务器 `~/apps/newshub/data/`。
 
 ### 手动构建
 

@@ -1,132 +1,82 @@
-name: Publish Docker Images
+# Docker build, push, and deploy workflow
+# 参考 shenzjd.com 的 .github/workflows/docker.yml 整体配置：
+# 仅推送 GitHub Container Registry（ghcr.io），部署走 SSH 密码登录 + docker run 直部署
+name: Create and publish a Docker image
 
 on:
   push:
     branches:
       - main
-      - master
-    tags:
-      - "v*"
+  # Triggered by workflow_dispatch
   workflow_dispatch:
 
 env:
-  REGISTRY_DOCKERHUB: docker.io
-  REGISTRY_GHCR: ghcr.io
+  REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  build-and-push:
+  build-and-push-image:
     runs-on: ubuntu-latest
-
+    # Sets the permissions granted to the `GITHUB_TOKEN` for the actions in this job.
     permissions:
       contents: read
       packages: write
-
+      attestations: write
+      id-token: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-        with:
-          platforms: linux/amd64
-
-      - name: Log in to Docker Hub
-        if: github.event_name != 'pull_request'
+      # 登录 GHCR 使用内置 GITHUB_TOKEN，无需额外配置 Docker Hub 用户名/密码
+      - name: Log in to the Container registry
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Log in to GitHub Container Registry
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY_GHCR }}
+          registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata
+      # Always emit a `latest` tag so the deploy step can pull `:latest`.
+      - name: Extract metadata (tags, labels) for Docker
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: |
-            ${{ env.REGISTRY_DOCKERHUB }}/${{ env.IMAGE_NAME }}
-            ${{ env.REGISTRY_GHCR }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=raw,value={{sha}},enable={{is_default_branch}}
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          flavor: |
+            latest=true
 
-      - name: Build and push multi-registry
+      - name: Build and push Docker image
+        id: push
         uses: docker/build-push-action@v5
         with:
           context: .
-          platforms: linux/amd64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
-  release:
-    needs: build-and-push
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Create GitHub Release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # 生成镜像 provenance 证明，增强供应链安全
+      - name: Generate artifact attestation
+        uses: actions/attest-build-provenance@v1
+        continue-on-error: true
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          body: |
-            ## 🚀 新版本发布
-            ### 📦 Docker 镜像
-            **Docker Hub:**
-            ```bash
-            docker pull ${{ env.REGISTRY_DOCKERHUB }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
-            docker pull ${{ env.REGISTRY_DOCKERHUB }}/${{ env.IMAGE_NAME }}:latest
-            ```
-            **GitHub Container Registry:**
-            ```bash
-            docker pull ${{ env.REGISTRY_GHCR }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
-            docker pull ${{ env.REGISTRY_GHCR }}/${{ env.IMAGE_NAME }}:latest
-            ```
-            ### 🐳 快速开始
-            ```bash
-            docker run -p 3000:3000 ${{ env.REGISTRY_DOCKERHUB }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
-            ```
-            访问 http://localhost:3000 开始使用！
-          draft: false
-          prerelease: false
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
 
+  # Deploy the freshly pushed image to the production server over SSH.
   deploy:
-    # 推送到 main 分支后，自动部署到服务器（参考 shenzjd.com 的 docker run 直部署方式）
-    needs: build-and-push
+    needs: build-and-push-image
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-
+    if: github.ref == 'refs/heads/main'
     steps:
-      - name: Deploy via SSH (docker run)
-        uses: appleboy/ssh-action@v1.2.0
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USERNAME }}
-          key: ${{ secrets.DEPLOY_KEY }}
-          port: ${{ secrets.DEPLOY_PORT || '22' }}
+          username: ${{ secrets.DEPLOY_USER }}
+          password: ${{ secrets.DEPLOY_PASSWORD }}
           script: |
-            IMAGE="wu529778790/newshub.shenzjd.com:latest"
-            CONTAINER="newshub"
+            IMAGE="ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]'):latest"
+            CONTAINER="${{ github.event.repository.name }}"
             ENV_FILE="/opt/1panel/apps/openresty/openresty/www/sites/newshub.shenzjd.com/index/.env"
             DATA_DIR="$HOME/apps/newshub/data"
             mkdir -p "$DATA_DIR"

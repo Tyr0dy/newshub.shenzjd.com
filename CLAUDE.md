@@ -254,56 +254,53 @@ CMD ["node", "start.mjs"]
 ### GitHub Actions（自动发布）
 
 ```yaml
-name: Publish Docker Images
+# 完整配置见 .github/workflows/docker-publish.yml（参考 shenzjd.com）
+# 仅推送 GHCR（ghcr.io），登录使用内置 GITHUB_TOKEN，无需 Docker Hub 凭据
+name: Create and publish a Docker image
 on:
   push:
-    branches: [main, master]
-    tags: ['v*']
+    branches: [main]
   workflow_dispatch:
 
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
 jobs:
-  build-and-push:
+  build-and-push-image:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
+      attestations: write
+      id-token: write
     steps:
       - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-        with:
-          platforms: linux/amd64
-
-      # 登录 Docker Hub 和 GHCR
+      # 登录 GHCR
       - uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-      - uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
+          registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      # 构建并推送（同时到 Docker Hub 和 GHCR）
+      # 构建并推送（仅 GHCR，latest 标签）
+      - uses: docker/metadata-action@v5
+        id: meta
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          flavor: |
+            latest=true
       - uses: docker/build-push-action@v5
         with:
           context: .
-          platforms: linux/amd64
           push: true
-          tags: |
-            wu529778790/newshub.shenzjd.com:latest
-            ghcr.io/wu529778790/newshub.shenzjd.com:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
 ```
 
 ### 部署命令
 
 ```bash
-# Docker Hub
-docker run -p 3000:3000 wu529778790/newshub.shenzjd.com:latest
-
-# GHCR
+# GHCR（推荐）
 docker run -p 3000:3000 ghcr.io/wu529778790/newshub.shenzjd.com:latest
 
 # Docker Compose
