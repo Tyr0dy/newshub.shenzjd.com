@@ -45,7 +45,6 @@ export class Cache {
     // 优先从内存获取
     const cache = inMemoryCache.get(key);
     if (cache) {
-      logger.success(`get ${key} in-memory cache`);
       return cache;
     }
 
@@ -69,7 +68,6 @@ export class Cache {
         results.push(cache);
       }
     }
-    logger.success(`get entire (${results.length}/${keys.length}) cache`);
     return results;
   }
 
@@ -143,16 +141,28 @@ export class Cache {
   }
 }
 
-export async function getCacheTable() {
-  try {
-    const cacheTable = new Cache();
-    await cacheTable.init();
-    return cacheTable;
-  } catch (e) {
-    logger.error("failed to init cache ", e);
-    // 降级到纯内存缓存
-    const fallbackCache = new Cache();
-    fallbackCache['fileCacheEnabled'] = false;
-    return fallbackCache;
+// 缓存表单例（进程内只初始化一次）
+// 原实现每次 getCacheTable() 都 new Cache() + init()，而 init() 会 readdir + 全量读盘恢复
+// 所有缓存文件，导致每个 API 请求都做一遍磁盘 IO + JSON.parse（日志里"从文件恢复 N 个缓存"
+// 反复刷屏即由此而来）。改为 Promise 级单例：文件恢复只在首次启动时执行一次，
+// 并发调用共享同一个初始化 Promise（避免多个插件同时调用时的竞态重复初始化）。
+let cacheTableSingleton: Promise<Cache> | null = null;
+
+export function getCacheTable(): Promise<Cache> {
+  if (!cacheTableSingleton) {
+    cacheTableSingleton = (async () => {
+      try {
+        const cacheTable = new Cache();
+        await cacheTable.init();
+        return cacheTable;
+      } catch (e) {
+        logger.error("failed to init cache ", e);
+        // 降级到纯内存缓存
+        const fallbackCache = new Cache();
+        fallbackCache['fileCacheEnabled'] = false;
+        return fallbackCache;
+      }
+    })();
   }
+  return cacheTableSingleton;
 }
