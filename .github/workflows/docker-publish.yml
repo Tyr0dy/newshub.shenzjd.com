@@ -107,8 +107,40 @@ jobs:
             docker run -p 3000:3000 ${{ env.REGISTRY_DOCKERHUB }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
             ```
             访问 http://localhost:3000 开始使用！
-            ### ✨ 新功能
-            - 📸 新增一键分享功能：将热榜卡片复制为精美图片
-            - 🔄 自动发布：每次代码更新都会自动构建和发布 Docker 镜像
           draft: false
           prerelease: false
+
+  deploy:
+    # 推送到 main 分支后，自动部署到服务器（Docker Compose）
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Upload docker-compose.yml to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USERNAME }}
+          key: ${{ secrets.DEPLOY_KEY }}
+          port: ${{ secrets.DEPLOY_PORT || '22' }}
+          source: "docker-compose.yml"
+          target: "~/apps/newshub"
+          strip_components: 0
+
+      - name: Deploy via SSH (pull & restart)
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USERNAME }}
+          key: ${{ secrets.DEPLOY_KEY }}
+          port: ${{ secrets.DEPLOY_PORT || '22' }}
+          script: |
+            set -e
+            cd ~/apps/newshub
+            docker compose pull
+            docker compose up -d --remove-orphans
+            docker image prune -f
