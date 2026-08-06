@@ -64,6 +64,17 @@ export default defineNuxtConfig({
     // 直接 `node .output/server/index.mjs` 启动。
     preset: process.env.VERCEL ? "vercel" : (process.env.NITRO_PRESET || "node-server"),
 
+    // Vercel 部署配置（仅在 vercel preset 下生效）
+    vercel: {
+      // 函数区域固定在香港：实测 x-vercel-id 显示边缘 hkg1 但函数默认回源美东
+      // iad1，每次请求跨太平洋 RTT ~250ms。region 与边缘同区后延迟减半。
+      // 注意：Node 函数（本项目）的 regions 需经 functions 字段传入
+      // .vc-config.json；nitro.vercel.regions 仅对 Edge 函数生效。
+      functions: {
+        regions: ["hkg1"],
+      },
+    },
+
     // 压缩配置
     compressPublicAssets: true,
   },
@@ -145,10 +156,21 @@ export default defineNuxtConfig({
   },
 
   // 缓存配置
-  // 注意：EdgeOne 不支持 /** 通配符，缓存规则建议在 EdgeOne 控制台配置
+  // 注意：当前已部署 Vercel（CDN 支持 /** 通配符与 s-maxage/SWR）；
+  // 若回退到 EdgeOne（不支持 /** 通配）需在 EdgeOne 控制台配置缓存规则
   routeRules: {
-    // API 响应缓存（具体路径）
+    // 首页 SWR：CDN 缓存 60s，期间边缘直出、函数 0 调用（热点数据本身 TTL 10 分钟，缓存 60s 合理）
+    "/": {
+      swr: 60,
+    },
+
+    // API 响应缓存（sources 支持通配，覆盖 /api/v1/sources/{id} 等子路由）
     "/api/v1/sources": {
+      headers: {
+        "Cache-Control": "public, max-age=60, stale-while-revalidate=30",
+      },
+    },
+    "/api/v1/sources/**": {
       headers: {
         "Cache-Control": "public, max-age=60, stale-while-revalidate=30",
       },
