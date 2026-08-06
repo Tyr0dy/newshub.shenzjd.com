@@ -28,25 +28,25 @@
 </template>
 
 <script setup>
+import { useTheme } from "~/composables/useTheme";
+
 // 版本信息
 const version = "1.0.0";
 
-// 主题管理
-const currentTheme = ref("light");
-
-const toggleTheme = () => {
-  const newTheme = currentTheme.value === "light" ? "dark" : "light";
-  currentTheme.value = newTheme;
-  document.documentElement.setAttribute("data-theme", newTheme);
-  localStorage.setItem("theme", newTheme);
-};
-
-// 初始化主题
-onMounted(() => {
-  const savedTheme = localStorage.getItem("theme") || "light";
-  currentTheme.value = savedTheme;
-  document.documentElement.setAttribute("data-theme", savedTheme);
+// 主题管理：head 内联脚本在首屏渲染前同步设置 data-theme（防闪烁），
+// 后续切换由 NewHeader 调用 useTheme().toggle() 完成
+useHead({
+  script: [
+    {
+      innerHTML: `(function(){try{var t=localStorage.getItem("theme");var d=t?t==="dark":window.matchMedia("(prefers-color-scheme: dark)").matches;document.documentElement.setAttribute("data-theme",d?"dark":"light")}catch(e){document.documentElement.setAttribute("data-theme","light")}})();`,
+    },
+  ],
 });
+
+const { sync } = useTheme();
+if (import.meta.client) {
+  sync();
+}
 
 // 回到顶部功能
 const showScrollTop = ref(false);

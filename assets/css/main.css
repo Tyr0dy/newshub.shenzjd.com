@@ -2,10 +2,11 @@
 @import "tailwindcss";
 
 /* DaisyUI 5 插件（Tailwind 4 使用 @plugin 指令）
- * 主题：light 默认亮色、dark 跟随系统偏好、cupcake 可选
+ * 主题：light 默认亮色、dark 由 html[data-theme] 手动控制（不用 --prefersdark，
+ * 否则系统偏好会干扰手动切换）、cupcake 可选
  */
 @plugin "daisyui" {
-  themes: light --default, dark --prefersdark, cupcake;
+  themes: light --default, dark, cupcake;
 }
 
 /* 自定义主题色（原 nuxt.config tailwindcss.config 迁移）
@@ -15,3 +16,16 @@
   --color-primary: #07C160;
   --color-secondary: #1DA1F2;
 }
+
+/* Tailwind dark: 变体跟随 html[data-theme="dark"]（与 daisyUI 手动切换同步），
+ * 而非默认的 prefers-color-scheme——否则手动切深色时 daisyUI 组件变暗、
+ * 而 dark:bg-slate-* 等 Tailwind 类不生效，页面会半暗半亮撕裂 */
+@variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+
+/* safelist：NewCard/SearchModal 用 ${color} 拼接的动态类名（Tailwind 不解析拼接类名）
+ * color 取值（shared/pre-sources.ts）：blue/red/gray/orange/green/emerald/teal */
+@source inline("bg-blue-100 bg-red-100 bg-gray-100 bg-orange-100 bg-green-100 bg-emerald-100 bg-teal-100");
+@source inline("bg-blue-400 bg-red-400 bg-gray-400 bg-orange-400 bg-green-400 bg-emerald-400 bg-teal-400");
+@source inline("text-blue-600 text-red-600 text-gray-600 text-orange-600 text-green-600 text-emerald-600 text-teal-600");
+@source inline("dark:bg-blue-900/30 dark:bg-red-900/30 dark:bg-gray-900/30 dark:bg-orange-900/30 dark:bg-green-900/30 dark:bg-emerald-900/30 dark:bg-teal-900/30");
+@source inline("dark:text-blue-400 dark:text-red-400 dark:text-gray-400 dark:text-orange-400 dark:text-green-400 dark:text-emerald-400 dark:text-teal-400");

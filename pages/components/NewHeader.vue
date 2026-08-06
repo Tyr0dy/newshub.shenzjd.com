@@ -67,10 +67,10 @@
 
             <!-- 主题切换 -->
             <button
-              @click="toggleTheme"
+              @click="toggle"
               class="btn btn-ghost btn-sm sm:btn-md btn-circle cursor-pointer"
-              :title="currentTheme === 'light' ? '切换到深色' : '切换到浅色'">
-              <svg v-if="currentTheme === 'light'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              :title="!isDark ? '切换到深色' : '切换到浅色'">
+              <svg v-if="!isDark" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
               </svg>
               <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -100,7 +100,7 @@
               <ul tabindex="0" class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-52 mt-2">
                 <li><a @click="$emit('search')"><span>搜索 (⌘K)</span></a></li>
                 <li><a @click="$emit('toggle-layout')"><span>切换布局</span></a></li>
-                <li><a @click="toggleTheme"><span>切换主题</span></a></li>
+                <li><a @click="toggle"><span>切换主题</span></a></li>
                 <li><a href="/api" target="_blank"><span>API 文档</span></a></li>
                 <li><a @click="showShortcuts = true"><span>快捷键</span></a></li>
               </ul>
@@ -161,22 +161,13 @@ const props = defineProps({
 
 const emit = defineEmits(['refresh', 'search', 'toggle-layout'])
 
-// 主题管理
-const currentTheme = ref('light')
+// 主题管理（状态源在 composables/useTheme，初始化由 app.vue head 内联脚本完成）
+const { isDark, toggle, sync } = useTheme()
 const showShortcuts = ref(false)
 
-const toggleTheme = () => {
-  const newTheme = currentTheme.value === 'light' ? 'dark' : 'light'
-  currentTheme.value = newTheme
-  document.documentElement.setAttribute('data-theme', newTheme)
-  localStorage.setItem('theme', newTheme)
-}
-
-// 初始化主题
+// 初始化
 onMounted(() => {
-  const savedTheme = localStorage.getItem('theme') || 'light'
-  currentTheme.value = savedTheme
-  document.documentElement.setAttribute('data-theme', savedTheme)
+  sync() // 同步主题状态（head 内联脚本已设置 data-theme，这里只需同步 ref）
 
   // 键盘快捷键
   const handleKeydown = (e) => {
