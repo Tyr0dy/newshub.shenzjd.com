@@ -54,12 +54,12 @@ newshub.shenzjd.com/
 ## 开发命令
 
 ```bash
-pnpm install          # 安装依赖
-pnpm dev              # 开发模式（http://localhost:3000）
-pnpm build            # 构建生产版本
-pnpm preview          # 预览生产构建
-pnpm generate         # 生成静态站点
-pnpm type-check       # TypeScript 类型检查
+npm install            # 安装依赖
+npm run dev            # 开发模式（http://localhost:3000）
+npm run build          # 构建生产版本
+npm run preview        # 预览生产构建
+npm run generate       # 生成静态站点
+npm run type-check     # TypeScript 类型检查
 ```
 
 ## 核心架构
@@ -231,11 +231,10 @@ FROM node:20-alpine AS base
 # --- Build stage ---
 FROM base AS builder
 WORKDIR /app
-RUN npm install -g pnpm
-COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
+COPY package.json package-lock.json ./
+RUN npm ci
 COPY . .
-RUN pnpm build
+RUN npm run build
 
 # --- Production stage ---
 FROM base AS runner
@@ -261,7 +260,7 @@ CMD ["node", "start.mjs"]
 - 使用 `start.mjs` 作为启动脚本，支持静态文件服务
 - 多阶段构建：builder 构建、runner 只保留运行所需文件，镜像更小
 - 非 root 用户运行（UID 1001），数据目录 `/app/data` 由宿主机挂载
-- 支持 GitHub Actions 自动构建（`pnpm type-check` + `pnpm test` 门禁）
+- 支持 GitHub Actions 自动构建（`npm run type-check` + `npm run test` 门禁）
 
 ### GitHub Actions（自动发布）
 
@@ -285,10 +284,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm type-check
-      - run: pnpm test
+          cache: npm
+      - run: npm ci
+      - run: npm run type-check
+      - run: npm run test
       - name: Set image name
         run: echo "IMAGE_NAME=ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
       - uses: docker/login-action@v3
@@ -323,10 +322,10 @@ docker-compose up -d
 ```json
 // vercel.json
 {
-  "buildCommand": "pnpm build",
+  "buildCommand": "npm run build",
   "outputDirectory": ".output",
-  "devCommand": "pnpm dev",
-  "installCommand": "pnpm install",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
   "framework": "nuxtjs"
 }
 ```
@@ -411,7 +410,7 @@ A: 可能是跨域问题，使用自定义 Canvas 绘制方案
 A: 检查 `CACHE_DURATION` 配置，或使用 `?force=1` 参数
 
 **Q: Docker 构建失败？**
-A: 确保使用 `pnpm` 而非 `npm`，检查 `pnpm-lock.yaml` 是否存在
+A: 确保使用 `npm`（`npm ci`），检查 `package-lock.json` 是否存在
 
 ## 相关资源
 

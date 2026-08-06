@@ -22,22 +22,22 @@
 
 ```bash
 # 1. 安装依赖（首次）
-pnpm install
+npm install
 
 # 2. 启动开发服务器
-pnpm dev
+npm run dev
 # 访问 http://localhost:3000
 ```
 
 常用命令：
 
 ```bash
-pnpm dev             # 开发模式（http://localhost:3000）
-pnpm build           # 构建生产版本
-pnpm preview         # 预览生产构建
-pnpm type-check      # TypeScript 类型检查
-pnpm test            # 运行单元测试
-pnpm clean           # 清理构建产物
+npm run dev          # 开发模式（http://localhost:3000）
+npm run build        # 构建生产版本
+npm run preview      # 预览生产构建
+npm run type-check   # TypeScript 类型检查
+npm run test         # 运行单元测试
+npm run clean        # 清理构建产物
 ```
 
 ## 🐳 Docker 部署
@@ -232,7 +232,7 @@ export default defineSource({
 }
 ```
 
-3. **本地验证**：`pnpm dev` 后访问 `http://localhost:3000/api/hot/new-platform`
+3. **本地验证**：`npm run dev` 后访问 `http://localhost:3000/api/hot/new-platform`
 
 ## 🚀 性能设计
 

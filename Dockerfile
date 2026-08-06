@@ -5,16 +5,13 @@ FROM node:20-alpine AS base
 FROM base AS builder
 WORKDIR /app
 
-# 安装 pnpm
-RUN npm install -g pnpm
-
 # 先装依赖，利用 Docker 层缓存
-COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
+COPY package.json package-lock.json ./
+RUN npm ci
 
 # 拷贝源码并构建
 COPY . .
-RUN pnpm build
+RUN npm run build
 
 # --- Production stage ---
 FROM base AS runner

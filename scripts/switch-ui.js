@@ -19,7 +19,7 @@ switch (command) {
     console.log("Source: pages/index.vue");
     break;
   default:
-    console.log("Usage: pnpm ui:new | pnpm ui:old | pnpm ui:status");
+    console.log("Usage: npm run ui:new | npm run ui:old | npm run ui:status");
     console.log(message);
     break;
 }

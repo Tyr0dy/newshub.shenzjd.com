@@ -150,7 +150,7 @@ DATA_RETENTION_DAYS=90
 ```
 GitHub Actions 定时触发
     ↓
-启动 Nitro 服务 (pnpm start)
+启动 Nitro 服务 (npm run start)
     ↓
 调用 /api/v1/batch 获取数据
     ↓

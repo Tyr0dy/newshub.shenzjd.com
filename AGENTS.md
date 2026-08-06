@@ -4,13 +4,13 @@
 `app.vue` and `pages/` contain the Nuxt UI. Reusable Vue components live in `pages/components/`, and shared client helpers belong in `composables/`. Server routes are under `server/api/`; source fetchers such as `server/sources/weibo.ts` and `server/sources/coolapk/index.ts` implement platform-specific scraping. Shared runtime utilities live in `server/utils/` and `server/services/`. Cross-app types, constants, and metadata belong in `shared/`. Cached source payloads are stored in `data/cache/`, static assets in `public/`, and deployment config in `Dockerfile`, `docker-compose.yml`, `vercel.json`, and `.github/workflows/`.
 
 ## Build, Test, and Development Commands
-Use `pnpm install` once, then:
+Use `npm install` once, then:
 
-- `pnpm dev` starts local development on `http://localhost:3000`.
-- `pnpm dev:host` exposes the dev server on `0.0.0.0` for LAN or container testing.
-- `pnpm build` creates a production build; `pnpm preview` serves that build locally.
-- `pnpm type-check` runs Nuxt type checking and should pass before opening a PR.
-- `pnpm test` runs Vitest; `pnpm test:coverage` collects coverage when adding or changing logic.
+- `npm run dev` starts local development on `http://localhost:3000`.
+- `npm run dev:host` exposes the dev server on `0.0.0.0` for LAN or container testing.
+- `npm run build` creates a production build; `npm run preview` serves that build locally.
+- `npm run type-check` runs Nuxt type checking and should pass before opening a PR.
+- `npm run test` runs Vitest; `npm run test:coverage` collects coverage when adding or changing logic.
 - `node test-performance.js` and `./verify-optimization.sh` are useful for performance-related changes.
 
 ## Coding Style & Naming Conventions
