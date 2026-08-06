@@ -4,8 +4,6 @@
 
 🌐 在线体验：<https://newshub.shenzjd.com>
 
-![NewsHub 预览](https://gcore.jsdelivr.net/gh/wu529778790/image/blog/20251230211419.png)
-
 ## ✨ 功能特性
 
 - **多平台聚合**：35+ 数据源，覆盖**国内热点 / 科技 / 财经 / 国际**四大分类
