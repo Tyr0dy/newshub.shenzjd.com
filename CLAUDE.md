@@ -226,7 +226,7 @@ export default defineNuxtConfig({
 ### Dockerfile（多阶段构建，参考 TGAgent）
 
 ```dockerfile
-FROM node:20-alpine AS base
+FROM node:22-alpine AS base
 
 # --- Build stage ---
 FROM base AS builder
@@ -283,7 +283,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
       - run: npm install --no-audit --no-fund
       - run: npm run type-check
@@ -311,7 +311,7 @@ jobs:
 
 ```bash
 # GHCR（推荐）
-docker run -p 3000:3000 ghcr.io/wu529778790/newshub.shenzjd.com:latest
+docker run -p 6702:3000 ghcr.io/wu529778790/newshub.shenzjd.com:latest
 
 # Docker Compose
 docker-compose up -d

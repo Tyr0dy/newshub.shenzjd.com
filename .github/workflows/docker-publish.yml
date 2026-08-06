@@ -18,7 +18,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install dependencies
@@ -100,7 +100,7 @@ jobs:
             if ! sudo docker run -d \
               --name newshub \
               --restart unless-stopped \
-              -p 3000:3000 \
+              -p 6702:3000 \
               -v "$SITE_DIR/data":/app/data \
               --env-file "$ENV_FILE" \
               "$IMAGE"; then
@@ -112,7 +112,7 @@ jobs:
             # 健康检查：确认服务真正启动成功
             echo "等待服务启动..."
             for i in $(seq 1 20); do
-              if curl -sf http://localhost:3000/api/v1/health >/dev/null 2>&1; then
+              if curl -sf http://localhost:6702/api/v1/health >/dev/null 2>&1; then
                 echo "✅ 服务健康检查通过"
                 sudo docker image prune -f || true
                 exit 0

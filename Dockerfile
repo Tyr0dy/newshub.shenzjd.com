@@ -1,5 +1,5 @@
 # 多阶段构建：builder 构建，runner 仅保留运行所需文件并以非 root 用户运行
-FROM node:20-alpine AS base
+FROM node:22-alpine AS base
 
 # --- Build stage ---
 FROM base AS builder
