@@ -111,27 +111,13 @@ jobs:
           prerelease: false
 
   deploy:
-    # 推送到 main 分支后，自动部署到服务器（Docker Compose）
+    # 推送到 main 分支后，自动部署到服务器（参考 shenzjd.com 的 docker run 直部署方式）
     needs: build-and-push
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Upload docker-compose.yml to server
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USERNAME }}
-          key: ${{ secrets.DEPLOY_KEY }}
-          port: ${{ secrets.DEPLOY_PORT || '22' }}
-          source: "docker-compose.yml"
-          target: "~/apps/newshub"
-          strip_components: 0
-
-      - name: Deploy via SSH (pull & restart)
+      - name: Deploy via SSH (docker run)
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.DEPLOY_HOST }}
@@ -139,8 +125,29 @@ jobs:
           key: ${{ secrets.DEPLOY_KEY }}
           port: ${{ secrets.DEPLOY_PORT || '22' }}
           script: |
-            set -e
-            cd ~/apps/newshub
-            docker compose pull
-            docker compose up -d --remove-orphans
-            docker image prune -f
+            IMAGE="wu529778790/newshub.shenzjd.com:latest"
+            CONTAINER="newshub"
+            ENV_FILE="/opt/1panel/apps/openresty/openresty/www/sites/newshub.shenzjd.com/index/.env"
+            DATA_DIR="$HOME/apps/newshub/data"
+            mkdir -p "$DATA_DIR"
+            sudo docker pull "$IMAGE"
+            sudo docker stop "$CONTAINER" || true
+            sudo docker rm "$CONTAINER" || true
+            ENV_FLAGS=""
+            if [ -f "$ENV_FILE" ]; then
+              ENV_FLAGS="--env-file $ENV_FILE"
+            fi
+            sudo docker run -d \
+              --name "$CONTAINER" \
+              --restart unless-stopped \
+              --memory=512m \
+              --memory-swap=768m \
+              --cpus=1.0 \
+              --log-opt max-size=10m \
+              --log-opt max-file=3 \
+              -e NODE_OPTIONS="--max-old-space-size=256" \
+              $ENV_FLAGS \
+              -v "$DATA_DIR:/app/data" \
+              -p 3000:3000 \
+              "$IMAGE"
+            sudo docker image prune -f
