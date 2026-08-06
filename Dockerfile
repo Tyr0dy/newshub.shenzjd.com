@@ -6,8 +6,10 @@ FROM base AS builder
 WORKDIR /app
 
 # 先装依赖，利用 Docker 层缓存
+# 用 npm install 而非 npm ci：npm ci 严格按本地(macOS)生成的 lockfile 安装，
+# 会漏装 linux 平台的 optional 依赖（如 rolldown native binding），导致构建失败
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm install --no-audit --no-fund
 
 # 拷贝源码并构建
 COPY . .

@@ -232,7 +232,7 @@ FROM node:20-alpine AS base
 FROM base AS builder
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm install --no-audit --no-fund
 COPY . .
 RUN npm run build
 
@@ -285,7 +285,7 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - run: npm ci
+      - run: npm install --no-audit --no-fund
       - run: npm run type-check
       - run: npm run test
       - name: Set image name
@@ -410,7 +410,7 @@ A: 可能是跨域问题，使用自定义 Canvas 绘制方案
 A: 检查 `CACHE_DURATION` 配置，或使用 `?force=1` 参数
 
 **Q: Docker 构建失败？**
-A: 确保使用 `npm`（`npm ci`），检查 `package-lock.json` 是否存在
+A: 确保使用 `npm`（`npm install`），检查 `package-lock.json` 是否存在；注意 npm ci 在跨平台（macOS 生成 lockfile、linux 构建）时会漏装 optional 依赖（rolldown/esbuild native binding），CI 与 Dockerfile 均用 npm install
 
 ## 相关资源
 
