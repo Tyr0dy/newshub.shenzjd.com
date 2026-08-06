@@ -138,11 +138,21 @@ export default defineNuxtConfig({
       // 代码分割
       rollupOptions: {
         output: {
-          manualChunks: {
+          manualChunks(id: string) {
             // 拆分大型依赖
-            "vue-vendor": ["vue"],
-            "utils": ["dayjs", "cheerio", "fast-xml-parser"],
-            "image": ["html2canvas"],
+            if (id.includes('node_modules/vue') || id.includes('node_modules/@vue')) {
+              return 'vue-vendor';
+            }
+            if (
+              id.includes('node_modules/dayjs')
+              || id.includes('node_modules/cheerio')
+              || id.includes('node_modules/fast-xml-parser')
+            ) {
+              return 'utils';
+            }
+            if (id.includes('node_modules/html2canvas')) {
+              return 'image';
+            }
           },
         },
       },

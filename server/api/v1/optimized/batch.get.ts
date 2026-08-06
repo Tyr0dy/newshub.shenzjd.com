@@ -59,7 +59,7 @@ export default defineEventHandler(async (event) => {
 
   // 基于数据源类型调整优先级
   const getPriority = (id: string, config: any): number => {
-    let base = priorityWeights[priority];
+    let base = priorityWeights[priority] ?? 0;
 
     // 实时数据源优先级更高
     if (config.type === 'realtime') base += 20;

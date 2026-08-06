@@ -110,23 +110,17 @@ export class MetricsManager {
     // 如果有错误
     if (error) {
       this.metrics.totalErrors++;
-      if (!this.metrics.sourceFailure[metrics.sourceId]) {
-        this.metrics.sourceFailure[metrics.sourceId] = 0;
-      }
-      this.metrics.sourceFailure[metrics.sourceId]++;
+      this.metrics.sourceFailure[metrics.sourceId] = (this.metrics.sourceFailure[metrics.sourceId] || 0) + 1;
       logger.warn(`[Metrics] ${metrics.sourceId} failed: ${error.message}`);
     } else {
-      if (!this.metrics.sourceSuccess[metrics.sourceId]) {
-        this.metrics.sourceSuccess[metrics.sourceId] = 0;
-      }
-      this.metrics.sourceSuccess[metrics.sourceId]++;
+      this.metrics.sourceSuccess[metrics.sourceId] = (this.metrics.sourceSuccess[metrics.sourceId] || 0) + 1;
     }
 
     // 更新数据源平均响应时间
     if (!this.metrics.sourceAvgTime[metrics.sourceId]) {
       this.metrics.sourceAvgTime[metrics.sourceId] = 0;
     }
-    const currentAvg = this.metrics.sourceAvgTime[metrics.sourceId];
+    const currentAvg = this.metrics.sourceAvgTime[metrics.sourceId] || 0;
     const count = (this.metrics.sourceSuccess[metrics.sourceId] || 0) + (this.metrics.sourceFailure[metrics.sourceId] || 0);
     this.metrics.sourceAvgTime[metrics.sourceId] = (currentAvg * (count - 1) + duration) / count;
 

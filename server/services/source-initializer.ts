@@ -46,6 +46,7 @@ export async function migrateFromOldService(oldFetchers: Record<string, () => Pr
     // 处理子源（如 wallstreetcn-news）
     if (id.includes('-')) {
       const [parentId, subId] = id.split('-');
+      if (!parentId || !subId) continue;
       const parentConfig = (originSources as any)[parentId];
 
       if (parentConfig?.sub?.[subId]) {

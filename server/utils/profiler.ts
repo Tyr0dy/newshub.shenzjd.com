@@ -48,9 +48,9 @@ export class Profiler {
       children: [],
     };
 
-    // 如果有父级，添加到父级的子节点
+    // 如果有父级，添加到父级的子节点（stack.length > 0 保证栈顶存在）
     if (this.stack.length > 0) {
-      this.stack[this.stack.length - 1].children.push(profile);
+      this.stack[this.stack.length - 1]!.children.push(profile);
     }
 
     this.stack.push(profile);

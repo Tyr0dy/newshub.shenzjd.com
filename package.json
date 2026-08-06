@@ -17,7 +17,7 @@
     "preview:production": "cross-env NODE_ENV=production nuxt preview",
     "start": "node start.mjs",
     "postinstall": "nuxt prepare",
-    "test": "vitest --passWithNoTests",
+    "test": "vitest run --passWithNoTests",
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --coverage",
     "test:ui": "vitest --ui",

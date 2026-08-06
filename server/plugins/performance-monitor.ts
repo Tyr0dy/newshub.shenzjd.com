@@ -65,7 +65,7 @@ export default defineNitroPlugin((nitroApp) => {
 function extractSourceId(path: string): string | null {
   // /api/v1/sources/:id/hot
   const match = path.match(/\/api\/v1\/sources\/([^\/]+)/);
-  if (match) return match[1];
+  if (match) return match[1] ?? null;
 
   // /api/hot-list?id=:id
   const url = new URL(path, 'http://localhost');

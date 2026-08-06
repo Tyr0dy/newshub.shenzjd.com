@@ -78,6 +78,14 @@ export async function getHtmlBasedSource(): Promise<NewsItem[]> {
 
     return matches.map((match, index) => {
       const content = match[1];
+      if (!content) {
+        throw new ParseError(
+          'html-source',
+          html,
+          'Empty item content',
+          { matchIndex: index }
+        );
+      }
       const titleMatch = content.match(/<h2>(.*?)<\/h2>/);
       const urlMatch = content.match(/href="(.*?)"/);
 
@@ -92,8 +100,8 @@ export async function getHtmlBasedSource(): Promise<NewsItem[]> {
 
       return {
         id: `item-${index}`,
-        title: titleMatch[1],
-        url: urlMatch[1],
+        title: titleMatch[1]!,
+        url: urlMatch[1]!,
         extra: { info: `排名: ${index + 1}` },
       };
     });

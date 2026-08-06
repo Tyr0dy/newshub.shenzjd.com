@@ -137,8 +137,8 @@ export class RateLimiter {
       return;
     }
 
-    // 计算需要等待的时间
-    const oldestRequest = this.requests[0];
+    // 计算需要等待的时间（此处 requests.length >= maxRequests >= 1，首元素必然存在）
+    const oldestRequest = this.requests[0]!;
     const waitTime = this.windowMs - (now - oldestRequest);
 
     return new Promise(resolve => {
