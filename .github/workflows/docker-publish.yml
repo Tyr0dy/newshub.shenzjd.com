@@ -1,72 +1,63 @@
-# Docker build, push, and deploy workflow
-# 参考 shenzjd.com 的 .github/workflows/docker.yml 整体配置：
-# 仅推送 GitHub Container Registry（ghcr.io），部署走 SSH 密码登录 + docker run 直部署
-name: Create and publish a Docker image
+name: Build and Push Docker Image
 
 on:
   push:
-    branches:
-      - main
-  # Triggered by workflow_dispatch
+    branches: [main]
   workflow_dispatch:
 
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
-
 jobs:
-  build-and-push-image:
+  build-and-push:
     runs-on: ubuntu-latest
-    # Sets the permissions granted to the `GITHUB_TOKEN` for the actions in this job.
     permissions:
       contents: read
       packages: write
-      attestations: write
-      id-token: write
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
 
-      # 登录 GHCR 使用内置 GITHUB_TOKEN，无需额外配置 Docker Hub 用户名/密码
-      - name: Log in to the Container registry
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type check
+        run: pnpm type-check
+
+      - name: Run tests
+        run: pnpm test
+
+      - name: Set image name
+        run: echo "IMAGE_NAME=ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
+      - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.REGISTRY }}
+          registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Always emit a `latest` tag so the deploy step can pull `:latest`.
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@v5
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          flavor: |
-            latest=true
+          driver: docker
 
-      - name: Build and push Docker image
-        id: push
-        uses: docker/build-push-action@v5
+      - name: Build and push
+        uses: docker/build-push-action@v6
         with:
           context: .
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: |
+            ${{ env.IMAGE_NAME }}:latest
+            ${{ env.IMAGE_NAME }}:${{ github.sha }}
 
-      # 生成镜像 provenance 证明，增强供应链安全
-      - name: Generate artifact attestation
-        uses: actions/attest-build-provenance@v1
-        continue-on-error: true
-        with:
-          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          subject-digest: ${{ steps.push.outputs.digest }}
-          push-to-registry: true
-
-  # Deploy the freshly pushed image to the production server over SSH.
   deploy:
-    needs: build-and-push-image
+    needs: build-and-push
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - name: Deploy to server
         uses: appleboy/ssh-action@v1
@@ -76,28 +67,30 @@ jobs:
           password: ${{ secrets.DEPLOY_PASSWORD }}
           script: |
             IMAGE="ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]'):latest"
-            CONTAINER="${{ github.event.repository.name }}"
-            ENV_FILE="/opt/1panel/apps/openresty/openresty/www/sites/newshub.shenzjd.com/index/.env"
-            DATA_DIR="$HOME/apps/newshub/data"
-            mkdir -p "$DATA_DIR"
+            SITE_DIR="/opt/1panel/apps/openresty/openresty/www/sites/newshub.shenzjd.com/index"
+            ENV_FILE="$SITE_DIR/.env"
+
+            # .env 为容器环境变量的来源，由 docker run --env-file 注入，
+            # 服务器上直接编辑该文件即可改配置，重启生效。
+            # 首次部署时创建空文件(空 env-file 合法)，确保文件可读。
+            if [ ! -f "$ENV_FILE" ]; then sudo touch "$ENV_FILE"; fi
+            sudo chown 1001:1001 "$ENV_FILE"
+
             sudo docker pull "$IMAGE"
-            sudo docker stop "$CONTAINER" || true
-            sudo docker rm "$CONTAINER" || true
-            ENV_FLAGS=""
-            if [ -f "$ENV_FILE" ]; then
-              ENV_FLAGS="--env-file $ENV_FILE"
-            fi
+            sudo docker stop newshub newshub.shenzjd.com || true
+            sudo docker rm newshub newshub.shenzjd.com || true
+
+            # 数据目录(缓存等)挂载到宿主机，容器重建不丢。
+            # bind mount 会覆盖镜像层属主，需显式 chown 为容器 UID(1001)。
+            sudo mkdir -p "$SITE_DIR/data"
+            sudo chown -R 1001:1001 "$SITE_DIR"
             sudo docker run -d \
-              --name "$CONTAINER" \
+              --name newshub \
               --restart unless-stopped \
-              --memory=512m \
-              --memory-swap=768m \
-              --cpus=1.0 \
-              --log-opt max-size=10m \
-              --log-opt max-file=3 \
-              -e NODE_OPTIONS="--max-old-space-size=256" \
-              $ENV_FLAGS \
-              -v "$DATA_DIR:/app/data" \
               -p 3000:3000 \
+              -v "$SITE_DIR/data":/app/data \
+              --env-file "$ENV_FILE" \
               "$IMAGE"
-            sudo docker image prune -f
+            sudo docker image prune -f || true
+
+            echo "✅ 部署完成: newshub"

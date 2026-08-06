@@ -81,11 +81,6 @@ jobs:
 
             ### Docker Images (will be available after build completes)
 
-            **Docker Hub:**
-            ```bash
-            docker pull docker.io/${{ github.repository }}:v${{ steps.new-version.outputs.version }}
-            ```
-
             **GitHub Container Registry:**
             ```bash
             docker pull ghcr.io/${{ github.repository }}:v${{ steps.new-version.outputs.version }}

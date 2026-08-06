@@ -223,78 +223,89 @@ export default defineNuxtConfig({
 
 ## 🐳 Docker 部署
 
-### Dockerfile（单阶段构建）
+### Dockerfile（多阶段构建，参考 TGAgent）
 
 ```dockerfile
-FROM node:20-alpine
+FROM node:20-alpine AS base
 
+# --- Build stage ---
+FROM base AS builder
 WORKDIR /app
-
-# 安装 pnpm
 RUN npm install -g pnpm
-
-# 复制所有文件
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
 COPY . .
+RUN pnpm build
 
-# 安装依赖并构建
-RUN pnpm install --frozen-lockfile && pnpm build
-
-# 暴露端口
+# --- Production stage ---
+FROM base AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+ENV PORT=3000
+ENV HOST=0.0.0.0
+# 非 root 用户（UID 1001），与宿主机挂载目录属主一致
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
+COPY --from=builder --chown=nextjs:nodejs /app/.output ./.output
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nextjs:nodejs /app/package.json ./
+COPY --from=builder --chown=nextjs:nodejs /app/start.mjs ./
+# 数据目录（宿主机 bind mount 到 /app/data）
+RUN mkdir -p /app/data && chown nextjs:nodejs /app/data
+USER nextjs
 EXPOSE 3000
-
-# 启动应用（使用增强的 start.mjs）
 CMD ["node", "start.mjs"]
 ```
 
 **关键点：**
 - 使用 `start.mjs` 作为启动脚本，支持静态文件服务
-- 单阶段构建，简化构建过程
-- 支持 GitHub Actions 自动构建
+- 多阶段构建：builder 构建、runner 只保留运行所需文件，镜像更小
+- 非 root 用户运行（UID 1001），数据目录 `/app/data` 由宿主机挂载
+- 支持 GitHub Actions 自动构建（`pnpm type-check` + `pnpm test` 门禁）
 
 ### GitHub Actions（自动发布）
 
 ```yaml
-# 完整配置见 .github/workflows/docker-publish.yml（参考 shenzjd.com）
-# 仅推送 GHCR（ghcr.io），登录使用内置 GITHUB_TOKEN，无需 Docker Hub 凭据
-name: Create and publish a Docker image
+# 完整配置见 .github/workflows/docker-publish.yml（参考 TGAgent）
+# 仅推送 GHCR（ghcr.io），登录使用内置 GITHUB_TOKEN；CI 门禁 + latest/sha 双标签
+name: Build and Push Docker Image
 on:
   push:
     branches: [main]
   workflow_dispatch:
 
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
-
 jobs:
-  build-and-push-image:
+  build-and-push:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-      attestations: write
-      id-token: write
     steps:
       - uses: actions/checkout@v4
-      # 登录 GHCR
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm type-check
+      - run: pnpm test
+      - name: Set image name
+        run: echo "IMAGE_NAME=ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
       - uses: docker/login-action@v3
         with:
-          registry: ${{ env.REGISTRY }}
+          registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      # 构建并推送（仅 GHCR，latest 标签）
-      - uses: docker/metadata-action@v5
-        id: meta
+      - uses: docker/setup-buildx-action@v3
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          flavor: |
-            latest=true
-      - uses: docker/build-push-action@v5
+          driver: docker
+      - uses: docker/build-push-action@v6
         with:
           context: .
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: |
+            ${{ env.IMAGE_NAME }}:latest
+            ${{ env.IMAGE_NAME }}:${{ github.sha }}
 ```
 
 ### 部署命令

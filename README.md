@@ -69,10 +69,10 @@ docker compose logs -f
 
 ### 方式三：GitHub Actions 自动部署（推荐）
 
-推送代码到 `main` 分支后，CI/CD 流水线会自动完成 **构建镜像 → 推送 GHCR → SSH 登录服务器 → 拉取最新镜像并重启容器** 的完整流程：
+推送代码到 `main` 分支后，CI/CD 流水线会自动完成 **类型检查与测试 → 构建镜像 → 推送 GHCR → SSH 登录服务器 → 拉取最新镜像并重启容器** 的完整流程：
 
 ```
-push → 构建并推送 Docker 镜像 (build-and-push-image)
+push → CI 门禁 (type-check + test) → 构建并推送 Docker 镜像 (build-and-push)
      → 部署到服务器 (deploy)：docker pull && docker run 直部署
 ```
 
@@ -84,7 +84,12 @@ push → 构建并推送 Docker 镜像 (build-and-push-image)
 | `DEPLOY_USER` | 服务器 SSH 登录用户名 | `root` |
 | `DEPLOY_PASSWORD` | 服务器 SSH 登录密码 | `xxxxx` |
 
-服务器需预装 **Docker**，部署账号需有免密 `sudo docker` 权限，并开放目标端口。部署脚本会从 1Panel 站点目录 `/opt/1panel/apps/openresty/openresty/www/sites/newshub.shenzjd.com/index/.env` 加载环境变量（不存在则跳过），并将缓存数据持久化到服务器 `~/apps/newshub/data/`。
+服务器需预装 **Docker**，部署账号需有免密 `sudo docker` 权限，并开放目标端口。部署脚本约定（参考 TGAgent）：
+
+- 环境变量：容器从 1Panel 站点目录 `/opt/1panel/apps/openresty/openresty/www/sites/newshub.shenzjd.com/index/.env` 注入，**首次部署会自动创建空文件**，直接编辑该文件改配置、重启生效
+- 数据持久化：站点目录下 `data/` 挂载到容器 `/app/data`（缓存数据容器重建不丢）
+- 容器以非 root 用户运行（UID 1001），部署脚本会自动调整挂载目录属主
+- 镜像同时打 `latest` 与 `git-sha` 标签，方便回滚
 
 ### 手动构建
 
