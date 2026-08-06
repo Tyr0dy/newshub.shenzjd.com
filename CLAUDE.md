@@ -311,7 +311,7 @@ jobs:
 
 ```bash
 # GHCR（推荐）
-docker run -p 6702:3000 ghcr.io/wu529778790/newshub.shenzjd.com:latest
+docker run -p 6703:3000 ghcr.io/wu529778790/newshub.shenzjd.com:latest
 
 # Docker Compose
 docker-compose up -d

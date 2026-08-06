@@ -45,7 +45,7 @@ npm run clean        # 清理构建产物
 ### 方式一：直接运行镜像
 
 ```bash
-docker run -d -p 6702:3000 \
+docker run -d -p 6703:3000 \
   --name newshub \
   --restart unless-stopped \
   ghcr.io/wu529778790/newshub.shenzjd.com:latest
@@ -95,7 +95,7 @@ push → CI 门禁 (type-check + test) → 构建并推送 Docker 镜像 (build-
 
 ```bash
 docker build -t newshub .
-docker run -p 6702:3000 newshub
+docker run -p 6703:3000 newshub
 ```
 
 ## 📡 数据源列表（35）
