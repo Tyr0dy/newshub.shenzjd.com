@@ -22,10 +22,14 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        # 使用 npm install 而非 npm ci：npm ci 严格按本地(macOS)生成的 lockfile 安装，
-        # 会漏装 linux 平台的 optional 依赖（如 @rolldown/binding-linux-x64-gnu），
-        # 导致 rolldown native binding 缺失（npm/cli#4828）
-        run: npm install --no-audit --no-fund
+        # 先删除 macOS 生成的 lockfile 再 npm install：
+        # npm 的 lockfile 是平台感知的，跨平台时不会为其他平台补 optional 依赖
+        #（@rolldown/binding-linux-x64-gnu 等 native binding 会缺失，npm/cli#4828）。
+        # 在 linux runner 上重新解析会生成包含 linux binding 的 lockfile，
+        # 后续 Docker 构建步骤也使用这份 lockfile。
+        run: |
+          rm -f package-lock.json
+          npm install --no-audit --no-fund
 
       - name: Type check
         run: npm run type-check
