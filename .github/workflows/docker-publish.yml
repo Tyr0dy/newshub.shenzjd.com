@@ -97,10 +97,15 @@ jobs:
             sudo chown -R 1001:1001 "$SITE_DIR" || true
 
             # 启动容器；失败时输出容器日志，让 CI 显示真实错误
+            # 资源限制参考 shenzjd.com 模板：内存上限 512m（防止低配机器 OOM），
+            # NODE_OPTIONS 限制 V8 heap（应用实际 heap 仅 ~30MB，256m 绰绰有余）
             if ! sudo docker run -d \
               --name newshub \
               --restart unless-stopped \
+              --memory 512m \
+              --memory-swap 512m \
               -p 6703:3000 \
+              -e NODE_OPTIONS=--max-old-space-size=256 \
               -v "$SITE_DIR/data":/app/data \
               --env-file "$ENV_FILE" \
               "$IMAGE"; then
